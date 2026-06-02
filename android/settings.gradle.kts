@@ -35,7 +35,7 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     // Plugin versions are declared once here and applied (without a version) in
     // the module build files. This matches the Flutter 3.x Kotlin DSL template.
-    id("com.android.application") version "8.5.2" apply false
+    id("com.android.application") version "8.6.0" apply false
     id("org.jetbrains.kotlin.android") version "2.0.21" apply false
 }
 
