@@ -2,6 +2,19 @@
 
 A Flutter WebRTC VPN client with an Android `VpnService` backend.
 
+## Telemost/VLESS bridge configuration
+
+The home screen now accepts:
+
+- a Yandex Telemost room URL such as `https://telemost.yandex.ru/j/79079217431`;
+- a `vless://...` endpoint with `security=reality`.
+
+The Flutter layer validates and normalizes these values before starting the VPN
+and passes them through `vpn_channel.start` to Android. Captured TUN packets are
+now routed through an injectable `PacketTransport`, so the packet bridge can be
+replaced with a native Telemost/tun2socks transport without changing the UI or
+packet subscription lifecycle.
+
 ## Getting Started
 
 ```bash

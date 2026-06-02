@@ -17,6 +17,9 @@ void main() {
     expect(find.text('Status: DISCONNECTED'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Connect'), findsOneWidget);
 
+    expect(find.text('Telemost room URL'), findsOneWidget);
+    expect(find.text('VLESS Reality URI'), findsOneWidget);
+
     // The title bar is present.
     expect(find.text('WebRTC VPN Client'), findsOneWidget);
   });

@@ -2,6 +2,7 @@ package com.example.vpn_app
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -55,7 +56,20 @@ class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.S
         when (call.method) {
             "start" -> {
                 val intent = Intent(context, VpnService::class.java).apply { action = "CONNECT" }
-                context.startService(intent)
+                val args = call.arguments as? Map<*, *>
+                args?.forEach { (key, value) ->
+                    when (value) {
+                        is String -> intent.putExtra(key.toString(), value)
+                        is Int -> intent.putExtra(key.toString(), value)
+                        is Long -> intent.putExtra(key.toString(), value)
+                        is Boolean -> intent.putExtra(key.toString(), value)
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
                 result.success(true)
             }
             "stop" -> {

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'tunnel_settings.dart';
+
 class TunnelInterface {
   static const MethodChannel _methodChannel = MethodChannel('vpn_channel');
   static const EventChannel _eventChannel = EventChannel('vpn_events');
@@ -11,9 +13,9 @@ class TunnelInterface {
   Stream<Uint8List> get onPacket => _packetController.stream;
   StreamSubscription? _eventSubscription;
 
-  Future<bool> start() async {
+  Future<bool> start(TunnelSettings settings) async {
     try {
-      await _methodChannel.invokeMethod('start');
+      await _methodChannel.invokeMethod('start', settings.toPlatformArgs());
       _eventSubscription =
           _eventChannel.receiveBroadcastStream().listen((event) {
         if (event is Uint8List) {
