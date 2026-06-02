@@ -20,6 +20,12 @@ Plugin [id: 'dev.flutter.flutter-gradle-plugin'] was not found in any of the fol
 - Plugin Repositories (plugin dependency must include a version number for this source)
 ```
 
+Newer Flutter SDKs also reject Android Gradle Plugin `8.5.2`:
+
+```
+Error: Your project's Android Gradle Plugin version (Android Gradle Plugin version 8.5.2) is lower than Flutter's minimum supported version of Android Gradle Plugin version 8.6.0.
+```
+
 ### Root cause
 
 The app module (`android/app/build.gradle.kts`) applies the Flutter Gradle
@@ -38,6 +44,11 @@ it ships inside the Flutter SDK and must be made available through the
 `settings.gradle.kts` only contained `include(":app")`, so Gradle had nowhere
 to resolve the plugin from, producing the error above.
 
+Current Flutter SDKs also validate the Android Gradle Plugin version before the
+Android build proceeds. The repository still pinned `com.android.application`
+to `8.5.2`, while Flutter requires at least `8.6.0`, so the Gradle task stopped
+while applying the Flutter Gradle Plugin.
+
 ### What changed
 
 - `android/settings.gradle.kts` — added the `pluginManagement` block that
@@ -51,3 +62,7 @@ to resolve the plugin from, producing the error above.
   attribute (AGP 8 requires `namespace` in Gradle instead).
 - `test/widget_test.dart` — replaced the leftover counter template test (which
   could never pass) with a test of the real home screen.
+- `android/settings.gradle.kts` — bumped `com.android.application` to `8.6.0`
+  so current Flutter SDKs accept the Android build configuration.
+- `test/android_gradle_config_test.dart` — added a regression test that fails if
+  the Android Gradle Plugin is pinned below Flutter's supported minimum.
