@@ -1,0 +1,45 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Foreground service permission required for Android 14+ (API 34+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application
+            android:label="WebRTC VPN"
+            android:icon="@mipmap/ic_launcher"
+            android:allowBackup="true"
+            android:usesCleartextTraffic="true">
+
+        <!-- Main activity -->
+        <activity
+                android:name=".MainActivity"
+                android:exported="true"
+                android:theme="@style/LaunchTheme"
+                android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                android:hardwareAccelerated="true"
+                android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- VPN service running as a foreground service -->
+        <service
+                android:name=".VpnService"
+                android:permission="android.permission.BIND_VPN_SERVICE"
+                android:exported="false"
+                android:foregroundServiceType="dataSync">
+            <intent-filter>
+                <action android:name="android.net.VpnService"/>
+            </intent-filter>
+        </service>
+
+        <!-- Flutter embedding v2 -->
+        <meta-data
+                android:name="flutterEmbedding"
+                android:value="2" />
+    </application>
+</manifest>
