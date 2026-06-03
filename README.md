@@ -6,7 +6,7 @@ A Flutter WebRTC VPN client with an Android `VpnService` backend.
 
 The home screen now accepts:
 
-- a Yandex Telemost room URL such as `https://telemost.yandex.ru/j/79079217431`;
+- a Yandex Telemost room URL such as `https://telemost.yandex.ru/j/......`;
 - a `vless://...` endpoint with `security=reality`.
 
 The Flutter layer validates and normalizes these values before starting the VPN
