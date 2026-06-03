@@ -42,14 +42,22 @@ class VpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            "CONNECT" -> connect()
+            "CONNECT" -> connect(intent)
             "DISCONNECT" -> disconnect()
         }
         return START_STICKY
     }
 
-    private fun connect() {
+    private fun connect(intent: Intent) {
         if (vpnInterface != null) disconnect()
+
+        val telemostRoomUrl = intent.getStringExtra("telemostRoomUrl").orEmpty()
+        val vlessHost = intent.getStringExtra("vlessHost").orEmpty()
+        val vlessPort = when (val value = intent.extras?.get("vlessPort")) {
+            is Int -> value
+            is Long -> value.toInt()
+            else -> 0
+        }
 
         // For Android 14+ (API 34+) the foreground service type must be declared.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -84,7 +92,7 @@ class VpnService : VpnService() {
                 }
             }
         }.apply { start() }
-        Log.i(TAG, "VPN started")
+        Log.i(TAG, "VPN started room=$telemostRoomUrl vless=$vlessHost:$vlessPort")
     }
 
     private fun disconnect() {
