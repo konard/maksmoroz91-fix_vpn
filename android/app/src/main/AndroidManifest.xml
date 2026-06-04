@@ -28,7 +28,7 @@
 
         <!-- VPN service running as a foreground service -->
         <service
-                android:name=".VpnService"
+                android:name=".AppVpnService"
                 android:permission="android.permission.BIND_VPN_SERVICE"
                 android:exported="false"
                 android:foregroundServiceType="dataSync">

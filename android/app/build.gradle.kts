@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application")
-    // The app is written in Kotlin (MainActivity.kt, VpnService.kt, ...), so the
+    // The app is written in Kotlin (MainActivity.kt, AppVpnService.kt, ...), so the
     // Kotlin Android plugin must be applied. It was missing in the original
     // project, which would fail the build right after the Flutter plugin issue
     // was resolved.
