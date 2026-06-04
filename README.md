@@ -35,6 +35,12 @@ The app module sets `packaging.jniLibs.useLegacyPackaging = true`; without that
 setting Android can keep JNI files inside the APK, leaving `nativeLibraryDir`
 empty and causing `Tun2SocksRunner` to log that the binary was not found.
 
+`Tun2SocksRunner` passes the Android TUN descriptor to the child process through
+inherited stdin and starts the binary with `--device fd://0`. Android's
+`ProcessBuilder` closes non-standard descriptors in the child process, so
+passing a duplicated descriptor such as `fd://240` can still fail inside
+`tun2socks` with `bad file descriptor` even after clearing `FD_CLOEXEC`.
+
 ## Getting Started
 
 ```bash
