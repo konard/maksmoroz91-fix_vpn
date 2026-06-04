@@ -47,6 +47,12 @@ android {
     }
 }
 
+dependencies {
+    // Optional gomobile olcRTC AAR. Keep this as fileTree so CI still builds
+    // when android/app/libs/olcrtc.aar is not committed to the repository.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+}
+
 flutter {
     source = "../.."
 }
