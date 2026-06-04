@@ -102,6 +102,27 @@ void main() {
     expect(buildConfig, contains('"*.aar"'));
   });
 
+  test('Android olcRTC bridge defaults Jitsi starts to datachannel', () {
+    final pluginFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/OlcrtcPlugin.kt',
+    );
+    final plugin = pluginFile.readAsStringSync();
+
+    expect(plugin, contains('private const val JITSI_CARRIER = "jitsi"'));
+    expect(
+      plugin,
+      contains('private const val JITSI_DEFAULT_TRANSPORT = "datachannel"'),
+    );
+    expect(
+      plugin,
+      contains('explicitTransport ?: defaultTransportFor(carrier)'),
+      reason:
+          'The issue 17 logs show carrier=jitsi falling back to mobile\'s '
+          'vp8channel default; upstream olcRTC documents jitsi+datachannel as '
+          'the stable default path.',
+    );
+  });
+
   test('tun2socks inherits TUN through stdin instead of a non-standard fd', () {
     final runnerFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',
