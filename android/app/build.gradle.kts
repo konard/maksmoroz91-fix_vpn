@@ -31,6 +31,15 @@ android {
         versionName = "1.0"
     }
 
+    packaging {
+        jniLibs {
+            // libtun2socks.so is launched through ProcessBuilder, so it must be
+            // extracted to applicationInfo.nativeLibraryDir instead of staying
+            // only inside the APK.
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
