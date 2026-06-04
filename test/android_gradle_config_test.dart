@@ -20,6 +20,22 @@ void main() {
           'Flutter stable rejects Android Gradle Plugin versions below 8.6.0.',
     );
   });
+
+  test('tun2socks native executable is extracted to nativeLibraryDir', () {
+    final buildFile = File('android/app/build.gradle.kts');
+    final buildConfig = buildFile.readAsStringSync();
+    final extractsJniLibs = RegExp(
+      r'packaging\s*\{[\s\S]*jniLibs\s*\{[\s\S]*useLegacyPackaging\s*=\s*true',
+    ).hasMatch(buildConfig);
+
+    expect(
+      extractsJniLibs,
+      isTrue,
+      reason:
+          'Tun2SocksRunner starts libtun2socks.so through ProcessBuilder, so '
+          'AGP must extract JNI libraries to applicationInfo.nativeLibraryDir.',
+    );
+  });
 }
 
 class _Version {

@@ -15,6 +15,26 @@ now routed through an injectable `PacketTransport`, so the packet bridge can be
 replaced with a native Telemost/tun2socks transport without changing the UI or
 packet subscription lifecycle.
 
+## Android tun2socks packaging
+
+`Tun2SocksRunner` starts `libtun2socks.so` with `ProcessBuilder`, which means
+Android must extract the native file to `applicationInfo.nativeLibraryDir`.
+Keep the executable at:
+
+```text
+android/app/src/main/jniLibs/<abi>/libtun2socks.so
+```
+
+For example, an arm64 build must include:
+
+```text
+android/app/src/main/jniLibs/arm64-v8a/libtun2socks.so
+```
+
+The app module sets `packaging.jniLibs.useLegacyPackaging = true`; without that
+setting Android can keep JNI files inside the APK, leaving `nativeLibraryDir`
+empty and causing `Tun2SocksRunner` to log that the binary was not found.
+
 ## Getting Started
 
 ```bash
