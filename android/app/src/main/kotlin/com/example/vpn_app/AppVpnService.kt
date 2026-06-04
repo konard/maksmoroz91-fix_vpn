@@ -13,9 +13,9 @@ import android.util.Log
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
-class VpnService : VpnService() {
+class AppVpnService : VpnService() {
     companion object {
-        private const val TAG = "VpnService"
+        private const val TAG = "AppVpnService"
         private const val VIRTUAL_ADDR = "10.0.0.2"
         private const val VIRTUAL_ROUTE = "0.0.0.0"
         private const val DEFAULT_SOCKS_HOST = "127.0.0.1"
@@ -23,9 +23,6 @@ class VpnService : VpnService() {
         private const val MTU = 1500
         private const val NOTIF_CHANNEL_ID = "vpn_channel"
         private const val NOTIF_ID = 1
-        private var instance: VpnService? = null
-
-        fun getInstance(): VpnService? = instance
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
@@ -35,13 +32,16 @@ class VpnService : VpnService() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
+        VpnServiceInstance.set(this)
         createNotificationChannel()
+        Log.i(TAG, "VPN service created")
     }
 
     override fun onDestroy() {
-        instance = null
+        disconnect(stopService = false)
+        VpnServiceInstance.clear()
         super.onDestroy()
+        Log.i(TAG, "VPN service destroyed")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,7 +53,7 @@ class VpnService : VpnService() {
     }
 
     private fun connect(intent: Intent) {
-        if (vpnInterface != null) disconnect()
+        if (vpnInterface != null) disconnect(stopService = false)
 
         val telemostRoomUrl = intent.getStringExtra("telemostRoomUrl").orEmpty()
         val vlessHost = intent.getStringExtra("vlessHost").orEmpty()
@@ -63,9 +63,12 @@ class VpnService : VpnService() {
             ?: DEFAULT_SOCKS_HOST
         val socksPort = getIntExtra(intent, "socksPort", DEFAULT_SOCKS_PORT)
 
-        // For Android 14+ (API 34+) the foreground service type must be declared.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            startForeground(
+                NOTIF_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
         } else {
             startForeground(NOTIF_ID, buildNotification())
         }
@@ -76,6 +79,7 @@ class VpnService : VpnService() {
             .addRoute(VIRTUAL_ROUTE, 0)
             .addDisallowedApplication(packageName)
             .setMtu(MTU)
+            .setBlocking(true)
 
         vpnInterface = builder.establish()
         if (vpnInterface == null) {
@@ -106,28 +110,48 @@ class VpnService : VpnService() {
     private fun startPacketBridgeReader() {
         running = true
         tunReaderThread = Thread {
-            val input = FileInputStream(vpnInterface!!.fileDescriptor)
-            val buffer = ByteArray(MTU)
-            while (running) {
-                val len = input.read(buffer)
-                if (len > 0) {
-                    val packet = buffer.copyOf(len)
-                    VpnPlugin.sendPacket(packet)
+            try {
+                FileInputStream(vpnInterface!!.fileDescriptor).use { input ->
+                    val buffer = ByteArray(MTU)
+                    while (running) {
+                        val len = input.read(buffer)
+                        if (len > 0) {
+                            val packet = buffer.copyOf(len)
+                            VpnPlugin.sendPacket(packet)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                if (running) {
+                    Log.e(TAG, "packet bridge reader failed", e)
                 }
             }
-        }.apply { start() }
+        }.apply {
+            name = "vpn-packet-bridge"
+            start()
+        }
     }
 
-    private fun disconnect() {
+    fun disconnect() {
+        disconnect(stopService = true)
+    }
+
+    private fun disconnect(stopService: Boolean) {
         running = false
         tun2SocksRunner?.stop()
         tun2SocksRunner = null
         tunReaderThread?.interrupt()
         tunReaderThread = null
-        vpnInterface?.close()
+        try {
+            vpnInterface?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "close interface", e)
+        }
         vpnInterface = null
         stopForeground(false)
-        stopSelf()
+        if (stopService) {
+            stopSelf()
+        }
         Log.i(TAG, "VPN stopped")
     }
 
@@ -152,7 +176,12 @@ class VpnService : VpnService() {
 
     private fun buildNotification(): Notification {
         val intent = Intent(this, MainActivity::class.java)
-        val pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pi = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, NOTIF_CHANNEL_ID)
                 .setContentTitle("VPN Active")
@@ -172,7 +201,11 @@ class VpnService : VpnService() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(NOTIF_CHANNEL_ID, "VPN Service", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(
+                NOTIF_CHANNEL_ID,
+                "VPN Service",
+                NotificationManager.IMPORTANCE_LOW,
+            )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }

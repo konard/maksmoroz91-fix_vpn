@@ -37,6 +37,36 @@ void main() {
     );
   });
 
+  test('Android VPN service uses app service class without shadowing framework', () {
+    final manifestFile = File('android/app/src/main/AndroidManifest.xml');
+    final manifest = manifestFile.readAsStringSync();
+    final pluginFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/VpnPlugin.kt',
+    );
+    final plugin = pluginFile.readAsStringSync();
+    final serviceFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/AppVpnService.kt',
+    );
+    final instanceFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/VpnServiceInstance.kt',
+    );
+    final shadowingServiceFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/VpnService.kt',
+    );
+
+    expect(serviceFile.existsSync(), isTrue);
+    expect(instanceFile.existsSync(), isTrue);
+    expect(shadowingServiceFile.existsSync(), isFalse);
+
+    final service = serviceFile.readAsStringSync();
+    expect(manifest, contains('android:name=".AppVpnService"'));
+    expect(service, contains('class AppVpnService : VpnService()'));
+    expect(service, contains('VpnServiceInstance.set(this)'));
+    expect(service, contains('.setBlocking(true)'));
+    expect(plugin, contains('Intent(context, AppVpnService::class.java)'));
+    expect(plugin, contains('VpnServiceInstance.get()?.writePacket(packet)'));
+  });
+
   test('tun2socks inherits TUN through stdin instead of a non-standard fd', () {
     final runnerFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',

@@ -55,7 +55,7 @@ class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.S
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "start" -> {
-                val intent = Intent(context, VpnService::class.java).apply { action = "CONNECT" }
+                val intent = Intent(context, AppVpnService::class.java).apply { action = "CONNECT" }
                 val args = call.arguments as? Map<*, *>
                 args?.forEach { (key, value) ->
                     when (value) {
@@ -73,7 +73,7 @@ class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.S
                 result.success(true)
             }
             "stop" -> {
-                val intent = Intent(context, VpnService::class.java).apply { action = "DISCONNECT" }
+                val intent = Intent(context, AppVpnService::class.java).apply { action = "DISCONNECT" }
                 context.startService(intent)
                 result.success(true)
             }
@@ -81,7 +81,7 @@ class VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.S
                 // Packets written from Dart are forwarded to the TUN interface.
                 val packet = call.argument<ByteArray>("packet")
                 if (packet != null) {
-                    VpnService.getInstance()?.writePacket(packet)
+                    VpnServiceInstance.get()?.writePacket(packet)
                 }
                 result.success(true)
             }
