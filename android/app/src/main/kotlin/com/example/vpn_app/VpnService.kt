@@ -18,6 +18,9 @@ class VpnService : VpnService() {
         private const val TAG = "VpnService"
         private const val VIRTUAL_ADDR = "10.0.0.2"
         private const val VIRTUAL_ROUTE = "0.0.0.0"
+        private const val DEFAULT_SOCKS_HOST = "127.0.0.1"
+        private const val DEFAULT_SOCKS_PORT = 1080
+        private const val MTU = 1500
         private const val NOTIF_CHANNEL_ID = "vpn_channel"
         private const val NOTIF_ID = 1
         private var instance: VpnService? = null
@@ -26,6 +29,7 @@ class VpnService : VpnService() {
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
+    private var tun2SocksRunner: Tun2SocksRunner? = null
     private var tunReaderThread: Thread? = null
     private var running = false
 
@@ -53,11 +57,11 @@ class VpnService : VpnService() {
 
         val telemostRoomUrl = intent.getStringExtra("telemostRoomUrl").orEmpty()
         val vlessHost = intent.getStringExtra("vlessHost").orEmpty()
-        val vlessPort = when (val value = intent.extras?.get("vlessPort")) {
-            is Int -> value
-            is Long -> value.toInt()
-            else -> 0
-        }
+        val vlessPort = getIntExtra(intent, "vlessPort", 0)
+        val socksHost = intent.getStringExtra("socksHost")
+            ?.takeIf { it.isNotBlank() }
+            ?: DEFAULT_SOCKS_HOST
+        val socksPort = getIntExtra(intent, "socksPort", DEFAULT_SOCKS_PORT)
 
         // For Android 14+ (API 34+) the foreground service type must be declared.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -71,7 +75,7 @@ class VpnService : VpnService() {
             .addAddress(VIRTUAL_ADDR, 24)
             .addRoute(VIRTUAL_ROUTE, 0)
             .addDisallowedApplication(packageName)
-            .setMtu(1500)
+            .setMtu(MTU)
 
         vpnInterface = builder.establish()
         if (vpnInterface == null) {
@@ -80,10 +84,30 @@ class VpnService : VpnService() {
             return
         }
 
+        tun2SocksRunner = Tun2SocksRunner(this)
+        if (tun2SocksRunner!!.start(vpnInterface!!, socksHost, socksPort, MTU)) {
+            Log.i(
+                TAG,
+                "VPN + tun2socks started room=$telemostRoomUrl " +
+                    "vless=$vlessHost:$vlessPort socks=$socksHost:$socksPort",
+            )
+            return
+        }
+        tun2SocksRunner = null
+
+        startPacketBridgeReader()
+        Log.i(
+            TAG,
+            "VPN started with Dart packet bridge fallback room=$telemostRoomUrl " +
+                "vless=$vlessHost:$vlessPort",
+        )
+    }
+
+    private fun startPacketBridgeReader() {
         running = true
         tunReaderThread = Thread {
             val input = FileInputStream(vpnInterface!!.fileDescriptor)
-            val buffer = ByteArray(1500)
+            val buffer = ByteArray(MTU)
             while (running) {
                 val len = input.read(buffer)
                 if (len > 0) {
@@ -92,11 +116,12 @@ class VpnService : VpnService() {
                 }
             }
         }.apply { start() }
-        Log.i(TAG, "VPN started room=$telemostRoomUrl vless=$vlessHost:$vlessPort")
     }
 
     private fun disconnect() {
         running = false
+        tun2SocksRunner?.stop()
+        tun2SocksRunner = null
         tunReaderThread?.interrupt()
         tunReaderThread = null
         vpnInterface?.close()
@@ -113,6 +138,15 @@ class VpnService : VpnService() {
             } catch (e: Exception) {
                 Log.e(TAG, "writePacket error", e)
             }
+        }
+    }
+
+    private fun getIntExtra(intent: Intent, key: String, defaultValue: Int): Int {
+        return when (val value = intent.extras?.get(key)) {
+            is Int -> value
+            is Long -> value.toInt()
+            is String -> value.toIntOrNull() ?: defaultValue
+            else -> defaultValue
         }
     }
 

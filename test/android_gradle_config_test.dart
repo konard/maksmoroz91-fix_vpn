@@ -36,6 +36,41 @@ void main() {
           'AGP must extract JNI libraries to applicationInfo.nativeLibraryDir.',
     );
   });
+
+  test('tun2socks inherits TUN through stdin instead of a non-standard fd', () {
+    final runnerFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',
+    );
+    final runner = runnerFile.readAsStringSync();
+
+    expect(
+      runner,
+      contains('"--device", "fd://\${OsConstants.STDIN_FILENO}"'),
+      reason:
+          'Android ProcessBuilder closes non-standard descriptors in the child; '
+          'tun2socks must receive the TUN fd through inherited stdin.',
+    );
+    expect(
+      runner,
+      contains('Os.dup2(tunForChild, OsConstants.STDIN_FILENO)'),
+    );
+    expect(
+      runner,
+      contains('redirectInput(ProcessBuilder.Redirect.INHERIT)'),
+    );
+    expect(
+      runner,
+      contains('Build.VERSION.SDK_INT < Build.VERSION_CODES.O'),
+      reason: 'ProcessBuilder.Redirect is available on Android API 26+.',
+    );
+    expect(
+      runner,
+      isNot(contains('"--device", "fd://\$dupFdInt"')),
+      reason:
+          'Passing a duplicated descriptor number above stderr reproduces the '
+          'bad file descriptor crash from issue 11.',
+    );
+  });
 }
 
 class _Version {
