@@ -41,6 +41,20 @@ inherited stdin and starts the binary with `--device fd://0`. Android's
 passing a duplicated descriptor such as `fd://240` can still fail inside
 `tun2socks` with `bad file descriptor` even after clearing `FD_CLOEXEC`.
 
+## Android olcRTC AAR
+
+Dart clients that call `olcrtc_channel` are handled by `OlcrtcPlugin` on
+Android. The plugin loads the gomobile AAR reflectively so CI can still build
+without committing native binaries, but device builds that start olcRTC must
+include:
+
+```text
+android/app/libs/olcrtc.aar
+```
+
+If the AAR is missing, `start` reports an `olcrtc_missing` platform error
+instead of Flutter throwing `MissingPluginException` for `getDeviceId`.
+
 ## Getting Started
 
 ```bash

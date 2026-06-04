@@ -67,6 +67,41 @@ void main() {
     expect(plugin, contains('VpnServiceInstance.get()?.writePacket(packet)'));
   });
 
+  test('Android registers native olcRTC Flutter channels', () {
+    final mainActivityFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/MainActivity.kt',
+    );
+    final mainActivity = mainActivityFile.readAsStringSync();
+    final pluginFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/OlcrtcPlugin.kt',
+    );
+    final buildFile = File('android/app/build.gradle.kts');
+    final buildConfig = buildFile.readAsStringSync();
+
+    expect(pluginFile.existsSync(), isTrue);
+
+    final plugin = pluginFile.readAsStringSync();
+    expect(mainActivity, contains('flutterEngine.plugins.add(OlcrtcPlugin())'));
+    expect(
+      plugin,
+      contains('MethodChannel(binding.binaryMessenger, "olcrtc_channel")'),
+    );
+    expect(
+      plugin,
+      contains('EventChannel(binding.binaryMessenger, "olcrtc_logs")'),
+    );
+    expect(plugin, contains('"getDeviceId"'));
+    expect(plugin, contains('"start"'));
+    expect(plugin, contains('"stop"'));
+    expect(plugin, contains('"isRunning"'));
+    expect(plugin, contains('Settings.Secure.ANDROID_ID'));
+    expect(plugin, contains('findClass("mobile.Mobile", "go.mobile.Mobile")'));
+    expect(plugin, contains('olcrtc_missing'));
+    expect(buildConfig, contains('implementation(fileTree('));
+    expect(buildConfig, contains('"libs"'));
+    expect(buildConfig, contains('"*.aar"'));
+  });
+
   test('tun2socks inherits TUN through stdin instead of a non-standard fd', () {
     final runnerFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',

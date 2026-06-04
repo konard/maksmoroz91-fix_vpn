@@ -13,6 +13,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(VpnPlugin())
+        flutterEngine.plugins.add(OlcrtcPlugin())
 
         val prepareChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vpn_prepare")
         prepareChannel.setMethodCallHandler { call, result ->
