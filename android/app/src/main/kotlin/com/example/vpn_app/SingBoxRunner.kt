@@ -411,7 +411,6 @@ class SingBoxRunner(private val context: Context) {
             .put("server", config.vlessHost)
             .put("server_port", config.vlessPort)
             .put("uuid", config.vlessUserId)
-            .put("network", "tcp")
             .put("tls", tls)
             .apply {
                 if (config.vlessFlow.isNotBlank()) {

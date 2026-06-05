@@ -190,6 +190,22 @@ void main() {
     expect(runner, isNot(contains('BoxService')));
   });
 
+  test('sing-box VLESS outbound keeps UDP enabled', () {
+    final runnerFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/SingBoxRunner.kt',
+    );
+    final runner = runnerFile.readAsStringSync();
+
+    expect(
+      runner,
+      isNot(contains('.put("network", "tcp")')),
+      reason:
+          'Issue 23 logs show TCP traffic continuing while UDP attempts fail. '
+          'sing-box enables both TCP and UDP for VLESS by default, so the app '
+          'must not force the generated outbound to TCP-only.',
+    );
+  });
+
   test('sing-box replaces the tun2socks ProcessBuilder integration', () {
     final runnerFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',
