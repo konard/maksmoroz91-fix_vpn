@@ -33,9 +33,8 @@ android {
 
     packaging {
         jniLibs {
-            // libtun2socks.so is launched through ProcessBuilder, so it must be
-            // extracted to applicationInfo.nativeLibraryDir instead of staying
-            // only inside the APK.
+            // Optional gomobile AARs such as libbox.aar and olcrtc.aar ship
+            // JNI libraries; extract them consistently for device builds.
             useLegacyPackaging = true
         }
     }
@@ -48,8 +47,8 @@ android {
 }
 
 dependencies {
-    // Optional gomobile olcRTC AAR. Keep this as fileTree so CI still builds
-    // when android/app/libs/olcrtc.aar is not committed to the repository.
+    // Optional gomobile AARs. Keep this as fileTree so CI still builds when
+    // android/app/libs/libbox.aar or olcrtc.aar is not committed to the repo.
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
 }
 

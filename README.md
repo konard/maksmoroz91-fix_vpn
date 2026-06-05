@@ -10,36 +10,31 @@ The home screen now accepts:
 - a `vless://...` endpoint with `security=reality`.
 
 The Flutter layer validates and normalizes these values before starting the VPN
-and passes them through `vpn_channel.start` to Android. Captured TUN packets are
-now routed through an injectable `PacketTransport`, so the packet bridge can be
-replaced with a native Telemost/tun2socks transport without changing the UI or
-packet subscription lifecycle.
+and passes them through `vpn_channel.start` to Android. Android creates the
+`VpnService` TUN interface and starts sing-box through the optional
+`libbox.aar` command server API.
 
-## Android tun2socks packaging
+## Android sing-box AAR
 
-`Tun2SocksRunner` starts `libtun2socks.so` with `ProcessBuilder`, which means
-Android must extract the native file to `applicationInfo.nativeLibraryDir`.
-Keep the executable at:
-
-```text
-android/app/src/main/jniLibs/<abi>/libtun2socks.so
-```
-
-For example, an arm64 build must include:
+`SingBoxRunner` loads sing-box's gomobile AAR reflectively, so CI can compile
+without committing native binaries. Device builds that start the VPN with
+sing-box must include:
 
 ```text
-android/app/src/main/jniLibs/arm64-v8a/libtun2socks.so
+android/app/libs/libbox.aar
 ```
 
-The app module sets `packaging.jniLibs.useLegacyPackaging = true`; without that
-setting Android can keep JNI files inside the APK, leaving `nativeLibraryDir`
-empty and causing `Tun2SocksRunner` to log that the binary was not found.
+The app accepts the package exposed by current sing-box Android builds:
 
-`Tun2SocksRunner` passes the Android TUN descriptor to the child process through
-inherited stdin and starts the binary with `--device fd://0`. Android's
-`ProcessBuilder` closes non-standard descriptors in the child process, so
-passing a duplicated descriptor such as `fd://240` can still fail inside
-`tun2socks` with `bad file descriptor` even after clearing `FD_CLOEXEC`.
+```text
+io.nekohasekai.libbox
+```
+
+The older draft imports `go.libbox.Libbox`, `go.libbox.BoxService`, and calls
+`service.start(fd)`, but the provided AAR exposes `Libbox.setup(SetupOptions)`,
+`CommandServer`, `PlatformInterface`, and `startOrReloadService(...)`. The app
+uses that API through reflection and duplicates the already established Android
+TUN descriptor from `PlatformInterface.openTun`.
 
 ## Android olcRTC AAR
 
