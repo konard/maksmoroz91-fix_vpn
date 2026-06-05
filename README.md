@@ -55,6 +55,12 @@ android/app/libs/olcrtc.aar
 If the AAR is missing, `start` reports an `olcrtc_missing` platform error
 instead of Flutter throwing `MissingPluginException` for `getDeviceId`.
 
+When Dart starts olcRTC with `carrier=jitsi` and does not pass an explicit
+`transport`, the Android bridge requests `datachannel`. The upstream mobile API
+defaults to `vp8channel`, but upstream olcRTC documentation recommends
+`jitsi + datachannel` as the stable starting path. Callers can still pass
+`transport=vp8channel` or another supported value to override this behavior.
+
 ## Getting Started
 
 ```bash

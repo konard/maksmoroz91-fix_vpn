@@ -25,6 +25,8 @@ class OlcrtcPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChanne
     companion object {
         private const val TAG = "OlcrtcPlugin"
         private const val DEFAULT_CARRIER = "telemost"
+        private const val JITSI_CARRIER = "jitsi"
+        private const val JITSI_DEFAULT_TRANSPORT = "datachannel"
         private const val DEFAULT_SOCKS_PORT = 1080
         private const val DEFAULT_WAIT_READY_MILLIS = 10000
     }
@@ -121,7 +123,8 @@ class OlcrtcPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChanne
         val socksPort = intArg(arguments, "socksPort") ?: DEFAULT_SOCKS_PORT
         val socksUser = stringArg(arguments, "socksUser").orEmpty()
         val socksPass = stringArg(arguments, "socksPass").orEmpty()
-        val transport = stringArg(arguments, "transport", "transportName")
+        val explicitTransport = stringArg(arguments, "transport", "transportName")
+        val transport = explicitTransport ?: defaultTransportFor(carrier)
         val waitReadyMillis =
             intArg(arguments, "waitReadyTimeoutMillis") ?: DEFAULT_WAIT_READY_MILLIS
 
@@ -147,11 +150,21 @@ class OlcrtcPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChanne
             )
         }
 
-        if (waitReadyMillis > 0) {
-            invokeWaitReady(mobileClass, waitReadyMillis)
-            emitLog("olcrtc waitReady completed; SOCKS5 ready on :$socksPort")
+        val transportLabel = transport ?: "mobile-default"
+        try {
+            if (waitReadyMillis > 0) {
+                invokeWaitReady(mobileClass, waitReadyMillis)
+                emitLog("olcrtc waitReady completed; SOCKS5 ready on :$socksPort")
+            }
+        } catch (e: Throwable) {
+            val failure = unwrapInvocation(e)
+            stopNativeAfterFailedStart(mobileClass)
+            throw OlcrtcStartException(
+                buildStartFailureMessage(failure, carrier, transportLabel, waitReadyMillis),
+                failure,
+            )
         }
-        emitLog("olcrtc started: carrier=$carrier clientId=$clientId")
+        emitLog("olcrtc started: carrier=$carrier transport=$transportLabel clientId=$clientId")
     }
 
     private fun stopNative() {
@@ -164,6 +177,35 @@ class OlcrtcPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChanne
         val mobileClass = loadMobileClass()
         return invokeStatic(mobileClass, listOf("IsRunning", "isRunning"), emptyArray()) as? Boolean
             ?: false
+    }
+
+    private fun stopNativeAfterFailedStart(mobileClass: Class<*>) {
+        try {
+            invokeStatic(mobileClass, listOf("Stop", "stop"), emptyArray())
+            emitLog("olcrtc stopped after failed start")
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to stop olcrtc after failed start", unwrapInvocation(e))
+        }
+    }
+
+    private fun buildStartFailureMessage(
+        failure: Throwable,
+        carrier: String,
+        transport: String,
+        waitReadyMillis: Int,
+    ): String {
+        val reason = failure.message ?: failure.toString()
+        return "olcRTC start failed before SOCKS5 was ready " +
+            "(carrier=$carrier transport=$transport timeout=${waitReadyMillis}ms): $reason. " +
+            "Check that the peer/server uses the same room and crypto key."
+    }
+
+    private fun defaultTransportFor(carrier: String): String? {
+        return if (carrier.equals(JITSI_CARRIER, ignoreCase = true)) {
+            JITSI_DEFAULT_TRANSPORT
+        } else {
+            null
+        }
     }
 
     private fun configureNativeBridge(mobileClass: Class<*>) {
@@ -454,6 +496,8 @@ class OlcrtcPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChanne
     }
 
     private class OlcrtcMissingException(message: String) : Exception(message)
+
+    private class OlcrtcStartException(message: String, cause: Throwable) : Exception(message, cause)
 
     private object MethodChannelResultPoster {
         private val handler = android.os.Handler(android.os.Looper.getMainLooper())
