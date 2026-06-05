@@ -15,7 +15,7 @@ class DebugPacketTransport implements PacketTransport {
   Future<void> connect(TunnelSettings settings) async {
     _connected = true;
     debugPrint(
-      'Bridge configured: ${settings.telemostRoom.url} -> '
+      'Bridge configured: ${settings.olcrtcCarrier}/${settings.olcrtcRoom.url} -> '
       '${settings.vlessEndpoint.host}:${settings.vlessEndpoint.port}',
     );
   }

@@ -17,9 +17,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late TunnelInterface _tunnel;
   late PacketHandler _packetHandler;
-  final TextEditingController _telemostRoomController = TextEditingController(
+  final TextEditingController _olcrtcRoomController = TextEditingController(
     text: 'https://telemost.yandex.ru/j/79079217431',
   );
+  final TextEditingController _olcrtcCarrierController = TextEditingController(
+    text: 'telemost',
+  );
+  final TextEditingController _olcrtcTransportController =
+      TextEditingController(text: 'datachannel');
+  final TextEditingController _olcrtcKeyController = TextEditingController();
   final TextEditingController _vlessUriController = TextEditingController();
   bool _isVpnRunning = false;
   String? _settingsError;
@@ -65,8 +71,11 @@ class _HomeScreenState extends State<HomeScreen> {
   TunnelSettings? _readSettings() {
     try {
       final settings = TunnelSettings.parse(
-        telemostRoom: _telemostRoomController.text,
+        olcrtcRoom: _olcrtcRoomController.text,
         vlessUri: _vlessUriController.text,
+        olcrtcKey: _olcrtcKeyController.text,
+        olcrtcCarrier: _olcrtcCarrierController.text,
+        olcrtcTransport: _olcrtcTransportController.text,
       );
       setState(() => _settingsError = null);
       return settings;
@@ -91,7 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _telemostRoomController.dispose();
+    _olcrtcRoomController.dispose();
+    _olcrtcCarrierController.dispose();
+    _olcrtcTransportController.dispose();
+    _olcrtcKeyController.dispose();
     _vlessUriController.dispose();
     unawaited(_packetHandler.stop());
     _tunnel.dispose();
@@ -113,12 +125,48 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('Status: ${_isVpnRunning ? "CONNECTED" : "DISCONNECTED"}'),
                 const SizedBox(height: 20),
                 TextField(
-                  controller: _telemostRoomController,
+                  controller: _olcrtcRoomController,
                   enabled: !_isVpnRunning,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    labelText: 'Telemost room URL',
+                    labelText: 'olcRTC room URL / ID',
                   ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _olcrtcCarrierController,
+                        enabled: !_isVpnRunning,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Carrier',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _olcrtcTransportController,
+                        enabled: !_isVpnRunning,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Transport',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _olcrtcKeyController,
+                  enabled: !_isVpnRunning,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'olcRTC key (64 hex)',
+                  ),
+                  keyboardType: TextInputType.visiblePassword,
                 ),
                 const SizedBox(height: 12),
                 TextField(

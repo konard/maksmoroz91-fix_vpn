@@ -123,6 +123,35 @@ void main() {
     );
   });
 
+  test('Dart tunnel starts olcRTC before Android VPN', () {
+    final clientFile = File('lib/vpn/olcrtc_client.dart');
+    final tunnelFile = File('lib/vpn/tunnel_interface.dart');
+    final settingsFile = File('lib/vpn/tunnel_settings.dart');
+
+    expect(clientFile.existsSync(), isTrue);
+
+    final client = clientFile.readAsStringSync();
+    final tunnel = tunnelFile.readAsStringSync();
+    final settings = settingsFile.readAsStringSync();
+
+    expect(client, contains("MethodChannel('olcrtc_channel')"));
+    expect(client, contains("EventChannel('olcrtc_logs')"));
+    expect(settings, contains('toOlcrtcArgs'));
+    expect(settings, contains('class OlcrtcRoom'));
+    expect(settings, contains('olcrtcKey'));
+    expect(settings, contains("'waitReadyTimeoutMillis'"));
+    expect(tunnel, contains('await _olcrtc.start(settings)'));
+    expect(tunnel, contains("invokeMethod('start', settings.toPlatformArgs())"));
+    expect(
+      tunnel.indexOf('await _olcrtc.start(settings)'),
+      lessThan(tunnel.indexOf("invokeMethod('start', settings.toPlatformArgs())")),
+      reason:
+          'The Android VPN/sing-box service must not start until olcRTC has '
+          'created the SOCKS endpoint. Issue 21 logs showed VPN startup after '
+          'olcRTC waitReady failed with a closed control stream.',
+    );
+  });
+
   test('Android VPN starts sing-box through libbox command server API', () {
     final serviceFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/AppVpnService.kt',

@@ -17,7 +17,10 @@ void main() {
     expect(find.text('Status: DISCONNECTED'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Connect'), findsOneWidget);
 
-    expect(find.text('Telemost room URL'), findsOneWidget);
+    expect(find.text('olcRTC room URL / ID'), findsOneWidget);
+    expect(find.text('Carrier'), findsOneWidget);
+    expect(find.text('Transport'), findsOneWidget);
+    expect(find.text('olcRTC key (64 hex)'), findsOneWidget);
     expect(find.text('VLESS Reality URI'), findsOneWidget);
 
     // The title bar is present.
