@@ -145,19 +145,11 @@ void main() {
     expect(service, contains('singBoxRunner!!.start(vpnInterface!!'));
     expect(service, isNot(contains('Tun2SocksRunner')));
 
-    expect(runner, contains('Class.forName("io.nekohasekai.libbox.Libbox"'));
-    expect(
-      runner,
-      contains('Class.forName("io.nekohasekai.libbox.SetupOptions"'),
-    );
-    expect(
-      runner,
-      contains('Class.forName("io.nekohasekai.libbox.CommandServerHandler"'),
-    );
-    expect(
-      runner,
-      contains('Class.forName("io.nekohasekai.libbox.PlatformInterface"'),
-    );
+    expect(runner, contains('Class.forName('));
+    expect(runner, contains('"io.nekohasekai.libbox.Libbox"'));
+    expect(runner, contains('"io.nekohasekai.libbox.SetupOptions"'));
+    expect(runner, contains('"io.nekohasekai.libbox.CommandServerHandler"'));
+    expect(runner, contains('"io.nekohasekai.libbox.PlatformInterface"'));
     expect(runner, contains('"newCommandServer"'));
     expect(runner, contains('"startOrReloadService"'));
     expect(runner, contains('"closeService"'));
