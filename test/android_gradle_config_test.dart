@@ -21,7 +21,7 @@ void main() {
     );
   });
 
-  test('tun2socks native executable is extracted to nativeLibraryDir', () {
+  test('Android native AAR libraries are extracted to nativeLibraryDir', () {
     final buildFile = File('android/app/build.gradle.kts');
     final buildConfig = buildFile.readAsStringSync();
     final extractsJniLibs = RegExp(
@@ -32,8 +32,8 @@ void main() {
       extractsJniLibs,
       isTrue,
       reason:
-          'Tun2SocksRunner starts libtun2socks.so through ProcessBuilder, so '
-          'AGP must extract JNI libraries to applicationInfo.nativeLibraryDir.',
+          'Optional gomobile AARs such as libbox.aar include JNI libraries; '
+          'device builds should extract them consistently for native loading.',
     );
   });
 
@@ -123,38 +123,54 @@ void main() {
     );
   });
 
-  test('tun2socks inherits TUN through stdin instead of a non-standard fd', () {
+  test('Android VPN starts sing-box through libbox command server API', () {
+    final serviceFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/AppVpnService.kt',
+    );
+    final runnerFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/SingBoxRunner.kt',
+    );
+    final staleRunnerFile = File(
+      'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',
+    );
+
+    expect(runnerFile.existsSync(), isTrue);
+    expect(staleRunnerFile.existsSync(), isFalse);
+
+    final service = serviceFile.readAsStringSync();
+    final runner = runnerFile.readAsStringSync();
+
+    expect(service, contains('private var singBoxRunner: SingBoxRunner?'));
+    expect(service, contains('SingBoxRunner.Config('));
+    expect(service, contains('singBoxRunner!!.start(vpnInterface!!'));
+    expect(service, isNot(contains('Tun2SocksRunner')));
+
+    expect(runner, contains('Class.forName('));
+    expect(runner, contains('"io.nekohasekai.libbox.Libbox"'));
+    expect(runner, contains('"io.nekohasekai.libbox.SetupOptions"'));
+    expect(runner, contains('"io.nekohasekai.libbox.CommandServerHandler"'));
+    expect(runner, contains('"io.nekohasekai.libbox.PlatformInterface"'));
+    expect(runner, contains('"newCommandServer"'));
+    expect(runner, contains('"startOrReloadService"'));
+    expect(runner, contains('"closeService"'));
+    expect(runner, contains('"openTun"'));
+    expect(runner, contains('"type", "vless"'));
+    expect(runner, contains('"reality"'));
+    expect(runner, isNot(contains('import go.libbox')));
+    expect(runner, isNot(contains('import io.nekohasekai.libbox')));
+    expect(runner, isNot(contains('BoxService')));
+  });
+
+  test('sing-box replaces the tun2socks ProcessBuilder integration', () {
     final runnerFile = File(
       'android/app/src/main/kotlin/com/example/vpn_app/Tun2SocksRunner.kt',
     );
-    final runner = runnerFile.readAsStringSync();
 
     expect(
-      runner,
-      contains('"--device", "fd://\${OsConstants.STDIN_FILENO}"'),
+      runnerFile.existsSync(),
+      isFalse,
       reason:
-          'Android ProcessBuilder closes non-standard descriptors in the child; '
-          'tun2socks must receive the TUN fd through inherited stdin.',
-    );
-    expect(
-      runner,
-      contains('Os.dup2(tunForChild, OsConstants.STDIN_FILENO)'),
-    );
-    expect(
-      runner,
-      contains('redirectInput(ProcessBuilder.Redirect.INHERIT)'),
-    );
-    expect(
-      runner,
-      contains('Build.VERSION.SDK_INT < Build.VERSION_CODES.O'),
-      reason: 'ProcessBuilder.Redirect is available on Android API 26+.',
-    );
-    expect(
-      runner,
-      isNot(contains('"--device", "fd://\$dupFdInt"')),
-      reason:
-          'Passing a duplicated descriptor number above stderr reproduces the '
-          'bad file descriptor crash from issue 11.',
+          'Issue 19 replaces the tun2socks binary bridge with sing-box libbox.',
     );
   });
 }

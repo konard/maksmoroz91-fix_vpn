@@ -10,7 +10,6 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import java.io.FileInputStream
 import java.io.FileOutputStream
 
 class AppVpnService : VpnService() {
@@ -26,9 +25,7 @@ class AppVpnService : VpnService() {
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    private var tun2SocksRunner: Tun2SocksRunner? = null
-    private var tunReaderThread: Thread? = null
-    private var running = false
+    private var singBoxRunner: SingBoxRunner? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -77,6 +74,8 @@ class AppVpnService : VpnService() {
         builder.setSession("WebRTC VPN")
             .addAddress(VIRTUAL_ADDR, 24)
             .addRoute(VIRTUAL_ROUTE, 0)
+            .addDnsServer("8.8.8.8")
+            .addDnsServer("8.8.4.4")
             .addDisallowedApplication(packageName)
             .setMtu(MTU)
             .setBlocking(true)
@@ -88,48 +87,32 @@ class AppVpnService : VpnService() {
             return
         }
 
-        tun2SocksRunner = Tun2SocksRunner(this)
-        if (tun2SocksRunner!!.start(vpnInterface!!, socksHost, socksPort, MTU)) {
+        val singBoxConfig = SingBoxRunner.Config(
+            vlessHost = vlessHost,
+            vlessPort = vlessPort,
+            vlessUserId = intent.getStringExtra("vlessUserId").orEmpty(),
+            realityPublicKey = intent.getStringExtra("realityPublicKey").orEmpty(),
+            realityServerName = intent.getStringExtra("realityServerName").orEmpty(),
+            realityShortId = intent.getStringExtra("realityShortId").orEmpty(),
+            vlessFlow = intent.getStringExtra("vlessFlow").orEmpty(),
+            socksHost = socksHost,
+            socksPort = socksPort,
+            mtu = MTU,
+        )
+
+        singBoxRunner = SingBoxRunner(this)
+        if (singBoxRunner!!.start(vpnInterface!!, singBoxConfig)) {
             Log.i(
                 TAG,
-                "VPN + tun2socks started room=$telemostRoomUrl " +
+                "VPN + sing-box started room=$telemostRoomUrl " +
                     "vless=$vlessHost:$vlessPort socks=$socksHost:$socksPort",
             )
             return
         }
-        tun2SocksRunner = null
 
-        startPacketBridgeReader()
-        Log.i(
-            TAG,
-            "VPN started with Dart packet bridge fallback room=$telemostRoomUrl " +
-                "vless=$vlessHost:$vlessPort",
-        )
-    }
-
-    private fun startPacketBridgeReader() {
-        running = true
-        tunReaderThread = Thread {
-            try {
-                FileInputStream(vpnInterface!!.fileDescriptor).use { input ->
-                    val buffer = ByteArray(MTU)
-                    while (running) {
-                        val len = input.read(buffer)
-                        if (len > 0) {
-                            val packet = buffer.copyOf(len)
-                            VpnPlugin.sendPacket(packet)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                if (running) {
-                    Log.e(TAG, "packet bridge reader failed", e)
-                }
-            }
-        }.apply {
-            name = "vpn-packet-bridge"
-            start()
-        }
+        Log.e(TAG, "Failed to start sing-box")
+        singBoxRunner = null
+        disconnect(stopService = true)
     }
 
     fun disconnect() {
@@ -137,11 +120,8 @@ class AppVpnService : VpnService() {
     }
 
     private fun disconnect(stopService: Boolean) {
-        running = false
-        tun2SocksRunner?.stop()
-        tun2SocksRunner = null
-        tunReaderThread?.interrupt()
-        tunReaderThread = null
+        singBoxRunner?.stop()
+        singBoxRunner = null
         try {
             vpnInterface?.close()
         } catch (e: Exception) {
