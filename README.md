@@ -2,17 +2,23 @@
 
 A Flutter WebRTC VPN client with an Android `VpnService` backend.
 
-## Telemost/VLESS bridge configuration
+## olcRTC/VLESS bridge configuration
 
-The home screen now accepts:
+The home screen accepts:
 
-- a Yandex Telemost room URL such as `https://telemost.yandex.ru/j/......`;
+- an olcRTC room URL or ID, for example
+  `https://telemost.yandex.ru/j/......` or a Jitsi room URL;
+- the olcRTC carrier and transport, defaulting to `telemost` and
+  `datachannel`;
+- a 64 character olcRTC encryption key;
 - a `vless://...` endpoint with `security=reality`.
 
-The Flutter layer validates and normalizes these values before starting the VPN
-and passes them through `vpn_channel.start` to Android. Android creates the
-`VpnService` TUN interface and starts sing-box through the optional
-`libbox.aar` command server API.
+The Flutter layer validates and normalizes these values, starts olcRTC through
+`olcrtc_channel`, waits for the native bridge to report SOCKS readiness, and
+only then starts the Android VPN through `vpn_channel.start`. Android creates
+the `VpnService` TUN interface and starts sing-box through the optional
+`libbox.aar` command server API. If olcRTC fails before SOCKS is ready, Flutter
+does not start the Android VPN service.
 
 ## Android sing-box AAR
 

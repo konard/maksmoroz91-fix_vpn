@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 @immutable
-class TelemostRoom {
-  const TelemostRoom._({
+class OlcrtcRoom {
+  const OlcrtcRoom._({
     required this.id,
     required this.url,
   });
@@ -16,23 +16,41 @@ class TelemostRoom {
   );
   static final RegExp _idPattern = RegExp(r'^[A-Za-z0-9_-]+$');
 
-  factory TelemostRoom.parse(String value) {
+  factory OlcrtcRoom.parse(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
-      throw const FormatException('Telemost room URL is required.');
+      throw const FormatException('olcRTC room URL or ID is required.');
     }
 
     final urlMatch = _urlPattern.firstMatch(trimmed);
-    final id = urlMatch?.group(1) ?? trimmed;
-    if (!_idPattern.hasMatch(id)) {
-      throw const FormatException(
-        'Expected a Yandex Telemost URL like https://telemost.yandex.ru/j/...',
+    if (urlMatch != null) {
+      final id = urlMatch.group(1)!;
+      return OlcrtcRoom._(
+        id: id,
+        url: 'https://telemost.yandex.ru/j/$id',
       );
     }
 
-    return TelemostRoom._(
-      id: id,
-      url: 'https://telemost.yandex.ru/j/$id',
+    if (_idPattern.hasMatch(trimmed)) {
+      return OlcrtcRoom._(
+        id: trimmed,
+        url: 'https://telemost.yandex.ru/j/$trimmed',
+      );
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty) {
+      return OlcrtcRoom._(id: trimmed, url: trimmed);
+    }
+
+    if (trimmed.contains('/') && !trimmed.contains(RegExp(r'\s'))) {
+      return OlcrtcRoom._(id: trimmed, url: trimmed);
+    }
+
+    throw const FormatException(
+      'Expected a Telemost URL, Jitsi URL, or olcRTC room ID.',
     );
   }
 }
@@ -110,32 +128,58 @@ class VlessRealityEndpoint {
 
 @immutable
 class TunnelSettings {
+  static final RegExp _olcrtcKeyPattern = RegExp(r'^[0-9a-fA-F]{64}$');
+
   const TunnelSettings({
-    required this.telemostRoom,
+    required this.olcrtcRoom,
     required this.vlessEndpoint,
+    required this.olcrtcKey,
+    this.olcrtcCarrier = 'telemost',
+    this.olcrtcTransport = 'datachannel',
     this.socksHost = '127.0.0.1',
     this.socksPort = 1080,
+    this.waitReadyTimeoutMillis = 60000,
   });
 
-  final TelemostRoom telemostRoom;
+  final OlcrtcRoom olcrtcRoom;
   final VlessRealityEndpoint vlessEndpoint;
+  final String olcrtcKey;
+  final String olcrtcCarrier;
+  final String olcrtcTransport;
   final String socksHost;
   final int socksPort;
+  final int waitReadyTimeoutMillis;
 
   factory TunnelSettings.parse({
-    required String telemostRoom,
+    required String olcrtcRoom,
     required String vlessUri,
+    required String olcrtcKey,
+    String olcrtcCarrier = 'telemost',
+    String olcrtcTransport = 'datachannel',
   }) {
+    final normalizedKey = _parseOlcrtcKey(olcrtcKey);
+    final normalizedCarrier = _parseNonEmpty(
+      olcrtcCarrier,
+      'olcRTC carrier is required.',
+    );
+    final normalizedTransport = _parseNonEmpty(
+      olcrtcTransport,
+      'olcRTC transport is required.',
+    );
+
     return TunnelSettings(
-      telemostRoom: TelemostRoom.parse(telemostRoom),
+      olcrtcRoom: OlcrtcRoom.parse(olcrtcRoom),
       vlessEndpoint: VlessRealityEndpoint.parse(vlessUri),
+      olcrtcKey: normalizedKey,
+      olcrtcCarrier: normalizedCarrier,
+      olcrtcTransport: normalizedTransport,
     );
   }
 
   Map<String, Object> toPlatformArgs() {
     return <String, Object>{
-      'telemostRoomId': telemostRoom.id,
-      'telemostRoomUrl': telemostRoom.url,
+      'telemostRoomId': olcrtcRoom.id,
+      'telemostRoomUrl': olcrtcRoom.url,
       'vlessUri': vlessEndpoint.originalUri,
       'vlessHost': vlessEndpoint.host,
       'vlessPort': vlessEndpoint.port,
@@ -147,5 +191,38 @@ class TunnelSettings {
       'socksHost': socksHost,
       'socksPort': socksPort,
     };
+  }
+
+  Map<String, Object> toOlcrtcArgs({required String clientId}) {
+    return <String, Object>{
+      'carrier': olcrtcCarrier,
+      'transport': olcrtcTransport,
+      'roomId': olcrtcRoom.url,
+      'telemostRoomId': olcrtcRoom.id,
+      'telemostRoomUrl': olcrtcRoom.url,
+      'clientId': clientId,
+      'key': olcrtcKey,
+      'socksHost': socksHost,
+      'socksPort': socksPort,
+      'waitReadyTimeoutMillis': waitReadyTimeoutMillis,
+    };
+  }
+
+  static String _parseOlcrtcKey(String value) {
+    final trimmed = value.trim();
+    if (!_olcrtcKeyPattern.hasMatch(trimmed)) {
+      throw const FormatException(
+        'olcRTC key must be a 64 character hex string.',
+      );
+    }
+    return trimmed.toLowerCase();
+  }
+
+  static String _parseNonEmpty(String value, String message) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      throw FormatException(message);
+    }
+    return trimmed;
   }
 }

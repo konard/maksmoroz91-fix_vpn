@@ -8,14 +8,17 @@ import 'package:vpn_app/vpn/tunnel_interface.dart';
 import 'package:vpn_app/vpn/tunnel_settings.dart';
 
 void main() {
+  const olcrtcKey =
+      '0000000000000000000000000000000000000000000000000000000000000000';
   const vlessUri =
       'vless://00000000-0000-0000-0000-000000000000@example.com:443'
       '?security=reality&sni=example.com&pbk=public-key';
 
   TunnelSettings settings() {
     return TunnelSettings.parse(
-      telemostRoom: 'https://telemost.yandex.ru/j/79079217431',
+      olcrtcRoom: 'https://telemost.yandex.ru/j/79079217431',
       vlessUri: vlessUri,
+      olcrtcKey: olcrtcKey,
     );
   }
 
