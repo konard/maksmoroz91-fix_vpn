@@ -405,6 +405,7 @@ class SingBoxRunner(private val context: Context) {
                     .put("short_id", config.realityShortId),
             )
 
+        // Keep "network" unset so sing-box enables both TCP and UDP for VLESS.
         return JSONObject()
             .put("type", "vless")
             .put("tag", VLESS_TAG)
